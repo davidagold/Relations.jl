@@ -45,22 +45,3 @@ end
         return
     end
 end
-
-# @generated function apply!(res, fs, src)
-#     n = length(fs.parameters)
-#     v_exs, push!_exs = Expr(:block), Expr(:block)
-#     for j in 1:n
-#         push!(v_exs.args,
-#               Expr(:(=), Symbol("v_$j"),
-#               Expr(:call, Expr(:call, :getfield, :fs, j), :i)))
-#         push!(push!_exs.args,
-#               Expr(:call, :push!,
-#                    Expr(:call, :getfield, :(res.src), j), Symbol("v_$j")))
-#     end
-#     res = quote
-#         for i in src
-#             $v_exs; $push!_exs
-#         end
-#         return
-#     end
-# end

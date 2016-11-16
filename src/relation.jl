@@ -61,6 +61,8 @@ Base.size{A<:Attributed}(r::Relation{A}) = (length(r),)
 
 # as a vector
 Base.getindex{A<:Attributed,T}(r::Relation{A,T}, i) = T(ith_all(i, r.src)...)
+Base.getindex{S<:Attributed,T}(r::Relation{S,T}, I::Vector) =
+    Relation(T, map(c->getindex(c,I), r.src)...)
 Base.push!{A<:Attributed}(r::Relation{A}, v) = (foreach(push!, r.src, v))
 Base.linearindexing{A<:Attributed}(r::Relation{A}) = Base.LinearFast()
 # NOTE: not all sources will support length
@@ -93,6 +95,7 @@ end
 
 # as queryable
 SQ.prepare{S<:Attributed}(r::Relation{S}) = r
+SQ.prepare{S<:Relation}(gr::Grouped{S}) = gr
 SQ._with{S<:Attributed}(q::SQ.Node, ::Tuple{Relation{S}}) = collect(q)
 SQ._with{S<:Attributed, T<:Attributed}(q::SQ.Node, ::Tuple{Relation{S}, Relation{T}}) = collect(q)
 

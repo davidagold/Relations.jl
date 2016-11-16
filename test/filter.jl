@@ -15,7 +15,6 @@ for T in (Array, NullableArray)
     # basic functionality
 
     I = find(i->i>2, A)
-    # _res = Relation(A=NullableArray(A[I]), B=NullableArray(B[I]), C=NullableArray(C[I]), D=NullableArray(D[I]))
     _res = Relation(A=T(A[I]), B=T(B[I]), C=T(C[I]), D=T(D[I]))
     res = @with src filter(A > 2)
     @test isequal(src, _src)

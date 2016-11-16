@@ -21,4 +21,6 @@ include("collect/attributive/filter.jl")
 include("collect/attributive/groupby.jl")
 include("collect/attributive/summarize.jl")
 
+include("collect/attributive/grouped/summarize.jl")
+
 end # module
