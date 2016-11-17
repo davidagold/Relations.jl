@@ -2,117 +2,96 @@
 *A circumspect interface for relational data*
 
 [![Build Status](https://travis-ci.org/davidagold/Relations.jl.svg?branch=master)](https://travis-ci.org/davidagold/Relations.jl)
-
 [![Coverage Status](https://coveralls.io/repos/davidagold/Relations.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/davidagold/Relations.jl?branch=master)
-
 [![codecov.io](http://codecov.io/github/davidagold/Relations.jl/coverage.svg?branch=master)](http://codecov.io/github/davidagold/Relations.jl?branch=master)
+
+## Installation
+
+This package is not yet registered. Install it with
+
+```julia
+Pkg.clone("https://github.com/davidagold/Relations.jl.git")
+```
 
 ## What is this library?
 
-This library lets you wrap certain objects as `Relation`s. You can treat a `Relation` like a bag of tuples. Right now the primary functionality that this supports is data manipulation via `@with`. The latter can be used against other sources, such as a `DataFrame`, to produce `Relation`s -- see the "What does using this library look like?" section below.
+This library lets you wrap certain objects as `Relation`s. You can treat a `Relation` like a bag of tuples. Right now the primary functionality that this supports is data manipulation via `@with`.
 
 
 ## Why did you make this?
 
-I wrote
+I wrote [StructuredQueries](https://github.com/davidagold/StructuredQueries.jl/) as a framework for representing manipulations over diverse data sources. Given such a representation, one can then define a semantics for collecting or executing the given manipulations against particular data sources. But I didn't know where to put the code that implemented these semantics.
 
+[AbstractTables](https://github.com/davidagold/AbstractTables.jl) was a first attempt to come up with such a home. The code it housed was intended to be generic over a certain class of "column-indexable" species. But the generality was based on inheritance (from the `AbstractTable` abstract type) and I don't think this is the most appropriate model. There are a number of different data types that can represent a bag of tuples. These may belong to type hierarchies that reflect other aspects of their functionality/behavior as well. To expect all such data types that we'd like to treat as bags of tuples to fall under this one node in the type lattice is unreasonable.
 
-[AbstractTables] was a first attempt to describe generic functionality over relational data sources. It was based on inheritance. But this isn't an appropriate model. There are a number of different data types that can represent a bag of tuples. These may belong to type hierarchies that reflect other aspects of their functionality/behavior as well. So to expect ...
+Really, what we want is an interface that lets us treat certain data types as bags of tuples regardless of where they belong in the type lattice, as long as they satisfy certain behaviors or others. The `Relation` type this library provides is intended as a wrapper that (in theory) lets us do precisely that.
 
-Really, what we want is an interface that lets us treat certain data types as bags of tuples regardless of where they belong in the type lattice, as long as they satisfy certain behaviors.
+Some types may satisfy behavior requirements only for certain protocols with which we treat `Relation`s as bags of tuples. For instance, a `Relation` that wraps a `CSV.Source` may only be iterable as a container of tuples, whereas a `Relation` that wraps a tuple of `NullableVector`s may be linearly indexable. (NOTE: So far, only wrapping "columns" of `AbstractVector`s is currently supported. I hope to remedy this limitation in December.) The semantics this library offers are intended to be *mostly* consistent over sources that support different protocols, and we try to make all exceptions very explicit. For the most part, differences between protocol support should affect only things like performance.
 
-Some types may satisfy behavior requirements only for certain protocols with which we treat `Relation`s as bags of tuples. For instance, a `Relation` that wraps a `CSV.Source` may only be iterable as a container of tuples, whereas a `Relation` that wraps a tuple of `NullableVector`s may be linearly indexable.
-The semantics this library offers are intended to be *mostly* consistent over sources that support different protocols, and we try to make all exceptions very explicit. For the most part, differences between protocol support should affect only things like performance.
-
+I drew a significant amount of inspiration from Jeff Bezanson's and others' work in [IndexedTables.jl](https://github.com/JuliaComputing/IndexedTables.jl), from [NamedTuples.jl](https://github.com/blackrock/NamedTuples.jl/), and from the ideas in David Anthoff's [Query.jl](https://github.com/davidanthoff/Query.jl/).
 
 ## What does using this library look like?
 
-Use `@with` to manipulate data:
+Right now, the only supported sources for `Relation`s are in-memory Julia vectors. (Again, I hope to expand this in due time.) You can create a `Relation` much the same way you can create a `DataFrame`:
 
 ```julia
-julia> iris
-150×5 DataFrames.DataFrame
-│ Row │ sepal_length │ sepal_width │ petal_length │ petal_width │ species     │
-├─────┼──────────────┼─────────────┼──────────────┼─────────────┼─────────────┤
-│ 1   │ 5.1          │ 3.5         │ 1.4          │ 0.2         │ "setosa"    │
-│ 2   │ 4.9          │ 3.0         │ 1.4          │ 0.2         │ "setosa"    │
-│ 3   │ 4.7          │ 3.2         │ 1.3          │ 0.2         │ "setosa"    │
-│ 4   │ 4.6          │ 3.1         │ 1.5          │ 0.2         │ "setosa"    │
-│ 5   │ 5.0          │ 3.6         │ 1.4          │ 0.2         │ "setosa"    │
-│ 6   │ 5.4          │ 3.9         │ 1.7          │ 0.4         │ "setosa"    │
-# remaining output suppressed
-
-julia> res = @with iris(i) filter(i.sepal_length > 7.0)
-Relation (source of type Relations.##279{NullableArrays.NullableArray{Float64,1},NullableArrays.NullableArray{Float64,1},NullableArrays.NullableArray{Float64,1},NullableArrays.NullableArray{Float64,1},NullableArrays.NullableArray{WeakRefString{UInt8},1}})
-⋮
-│ #     sepal_length   sepal_width   petal_length   petal_width   species      
-├─────┼──────────────┼─────────────┼──────────────┼─────────────┼─────────────┤
-│ 1     7.1            3.0           5.9            2.1           "virginica"  
-│ 2     7.6            3.0           6.6            2.1           "virginica"  
-│ 3     7.3            2.9           6.3            1.8           "virginica"  
-│ 4     7.2            3.6           6.1            2.5           "virginica"  
-│ 5     7.7            3.8           6.7            2.2           "virginica"  
-│ 6     7.7            2.6           6.9            2.3           "virginica"  
-│ 7     7.7            2.8           6.7            2.0           "virginica"  
-│ 8     7.2            3.2           6.0            1.8           "virginica"  
-│ 9     7.2            3.0           5.8            1.6           "virginica"  
-│ 10    7.4            2.8           6.1            1.9           "virginica"  
-⋮
-with 2 more rows.
+julia> r = Relation(A=rand(5), B=rand(1:3,5))
+Relation (in-memory Julia source)
+│ #     A          B  
+├─────┼──────────┼───┤
+│ 1     0.185199   1  
+│ 2     0.508584   1  
+│ 3     0.912091   3  
+│ 4     0.484842   1  
+│ 5     0.540283   1  
 ```
 
-In general, `@with` produces a `Cursor` object over the argument data source(s):
+The interface for manipulating a `Relation` is deliberately limited. For instance, you can't index into a `Relation` by attribute, except by messing with its internals
 
 ```julia
-julia> X = NullableArray(rand(10));
+julia> r[:A]
+ERROR: indexing Array{Float64,1} with types Tuple{Symbol} is not supported
+ in ith_all at /Users/David/.julia/v0.6/Relations/src/utils.jl:4 [inlined]
+ in getindex(::Relations.Relation{Relations.##297{Array{Float64,1},Array{Int64,1}},Relations.##297{Float64,Int64}}, ::Symbol) at /Users/David/.julia/v0.6/Relations/src/relation.jl:63
 
-julia> @with X(i) filter(i > .5)
-Cursor over a Tuple{NullableArrays.NullableArray{Float64,1}}
+julia> r.src.A
+5-element Array{Float64,1}:
+ 0.185199
+ 0.508584
+ 0.912091
+ 0.484842
+ 0.540283
 ```
 
-But, as can be seen above, for certain sources such as `DataFrame`s, `@with` will automatically `collect` the resultant `Cursor` over the source(s).
-
-It is very easy (and cheap) to turn a (column-based) `Relation` into a `DataFrame`.
+There are two things to note above. The first is that we've accessed the `A` column through the `:A` field of `r.src`, which is in fact a named-tuple-esque object referred to herein as an `Attributed`:
 
 ```julia
-julia> DataFrame(res)
-12×5 DataFrames.DataFrame
-│ Row │ sepal_length │ sepal_width │ petal_length │ petal_width │ species     │
-├─────┼──────────────┼─────────────┼──────────────┼─────────────┼─────────────┤
-│ 1   │ 7.1          │ 3.0         │ 5.9          │ 2.1         │ "virginica" │
-│ 2   │ 7.6          │ 3.0         │ 6.6          │ 2.1         │ "virginica" │
-│ 3   │ 7.3          │ 2.9         │ 6.3          │ 1.8         │ "virginica" │
-│ 4   │ 7.2          │ 3.6         │ 6.1          │ 2.5         │ "virginica" │
-│ 5   │ 7.7          │ 3.8         │ 6.7          │ 2.2         │ "virginica" │
-│ 6   │ 7.7          │ 2.6         │ 6.9          │ 2.3         │ "virginica" │
-│ 7   │ 7.7          │ 2.8         │ 6.7          │ 2.0         │ "virginica" │
-│ 8   │ 7.2          │ 3.2         │ 6.0          │ 1.8         │ "virginica" │
-│ 9   │ 7.2          │ 3.0         │ 5.8          │ 1.6         │ "virginica" │
-│ 10  │ 7.4          │ 2.8         │ 6.1          │ 1.9         │ "virginica" │
-│ 11  │ 7.9          │ 3.8         │ 6.4          │ 2.0         │ "virginica" │
-│ 12  │ 7.7          │ 3.0         │ 6.1          │ 2.3         │ "virginica" │
+julia> typeof(r.src)
+Relations.##297{Array{Float64,1},Array{Int64,1}}
+
+julia> supertype(ans)
+Relations.Attributed
 ```
 
-## How do I use this with DataFrames.jl?
-
-The `DataFrame` type stores relational data as Julia in-memory `AbstractVectors` ("vectors" for short) and varyingly supports directly addressing these internal components (the vectors) through the `DataFrame` interface. A `Relation` that wraps an (attributed) tuple of vectors employs a similar storage pattern for the data, but it does not support access to these vectors except through the built-in `getfield`. Rather, ...
-
-The interface is more limited, but it may be more relevant to what you'd like to do -- especially if you're working with missing data.
-
-Representing missing data is tricky. In Julia, ...
-
-So, you can use `@with` to manipulate a `DataFrame` (though we clarify that "manipulation" does not mutate the data). In general, this will produce a `Relation`. You can manipulate this `Relation` in the same way, or you can convert it back to a `DataFrame` (or stream it to some other data sink).
-
-
-## What should I know before using this library?
-
-You probably shouldn't use this library -- yet. It's still under heavy development. I hope to tag version 0.1 by the end of the year.
-
-If you're going to play with this package anyway, you should know the following. Recall how we said above that we guarantee consistent lifting semantics. For nearly all "scalar" functions (i.e., functions applied to one observation at a time), those semantics are...
-
-
-## Where is this going?
+So, columns of Julia vectors are stored in a `Relation` via a parametric `Attributed` leaf-type. This same leaf-type (but with different parameters) is also the `eltype` of the `Relation`:
 
 ```julia
-@do iris filter(sepal_length)
+julia> eltype(r)
+Relations.##297{Float64,Int64}
 ```
+
+Indeed, iterating over a `Relation` produces `Attributed` objects:
+
+```julia
+julia> i = first(r)
+(0.1851989900175528,1)
+
+julia> i.A, i.B
+(0.1851989900175528,1)
+```
+
+The second thing to note is that binding "columns" together in a `Relation` does not promote them to `DataArray`s or `NullableArray`s. If you put regular `Array`s into a `Relation`, they will stay that way (but resultant columns produced via manipulations that involve `Nullable` objects will produce `NullableArray` columns).
+
+## Manipulation
+
+See the examples in the [Collect.jl](https://github.com/davidagold/Collect.jl) [README](https://github.com/davidagold/Collect.jl/blob/master/README.md) for examples of how to use the StructuredQueries manipulation interface with `Relation` objects. Any such manipulation that can be performed on a `DataFrame` can be performed on a `Relation`. Indeed, manipulation graphs are executed against `DataFrame` objects by wrapping them in `Relation`s and acting on the latter.

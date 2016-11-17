@@ -16,8 +16,8 @@ function pre_groupby!{S<:Attributed}(src::Relation{S}, q, predicates)#::Tuple{Re
     groupbys = Vector{Symbol}(length(_groupbys))
     dos = Vector{SQ.Select}()
     i = 1 # count number of predicates encountered
-    println("for loop")
-    @time for (d, (j, groupby)) in zip(q.dos, enumerate(_groupbys))
+    for (d, (j, groupby)) in zip(q.dos, enumerate(_groupbys))
+        is_predicate, f, ai = SQ.parts(d)
         if is_predicate
             alias = Symbol("pred_$i")
             predicates[alias] = groupby
@@ -34,8 +34,7 @@ function pre_groupby!{S<:Attributed}(src::Relation{S}, q, predicates)#::Tuple{Re
         end
     end
 
-    println("pred_cols")
-    @time pred_cols = _collect(src, SQ.Node{SQ.Select}((SQ.DataNode(src),), [], dos))
+    pred_cols = _collect(src, SQ.Node{SQ.Select}((SQ.DataNode(src),), [], dos))
     new_src = together(src, pred_cols)
 
     return new_src, groupbys
@@ -46,16 +45,14 @@ function groupby{S<:Attributed}(src::Relation{S}, groupbys, predicates)::SQ.Grou
     metadata[:predicates] = predicates
     # obtain the field names of the groupbys (either the names of the selected
     # columns or the predicate aliases given to groupby predicates)
-    println("build_group_data")
-    group_indices, group_levels = @time build_group_data(src, groupbys)
+    group_indices, group_levels = build_group_data(src, groupbys)
     return SQ.Grouped(src, group_indices, groupbys, group_levels, metadata)
 end
 
 function build_group_data(src, groupbys)
     p = project(src, groupbys...)
     group_indices = Dict{typeof(p).parameters[2], Vector{Int}}()
-    println("grow_indices")
-    group_levels = @time grow_indices!(group_indices, p)
+    group_levels = grow_indices!(group_indices, p)
     return group_indices, group_levels
 end
 
